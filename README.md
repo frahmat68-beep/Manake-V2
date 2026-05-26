@@ -1,58 +1,122 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Manake Media Rental Management System (V2)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+An elegant, modern implementation of the Manake Media Equipment Rental Management website, strictly aligned with the academic thesis proposal:
+**“Sistem Manajemen Penyewaan Alat Media Manake Berbasis Payment Gateway dengan Optimalisasi Proses Bisnis.”**
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 📋 Academic Context & Business Process Optimization
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+This project serves as the primary implementation artifact for a computer science academic proposal focusing on optimizing traditional media rental operations. Traditional rental operations face bottlenecks in manual scheduling, double-booking errors, delayed security deposit refunds, and cash-in-hand friction.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+The **Manake V2** solution optimizes these processes via:
+1. **Real-time Availability Checks**: Preventing double-booking with transactional inventory status locks.
+2. **Automated Rental Lifecycle**: Standardized workflow transitions from pending checkout, active handovers, return condition checks, late return penalty fee calculations, to final resolution.
+3. **Integrated Payment Gateway**: Streamlining payments and deposits through Midtrans Snap Sandbox, automating order validation via secure webhook notifications.
+4. **Digital Auditing & Invoicing**: Instant automated PDF invoice generation via Barryvdh DomPDF to guarantee transparent financial tracing.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 🛠️ Technology Stack
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **Framework**: Laravel 12 (Core MVC architecture)
+- **Language**: PHP 8.3+
+- **Frontend Engine**: Laravel Blade (Structured template views)
+- **Styling**: Tailwind CSS (integrated via Vite asset pipeline)
+- **Dynamic Interaction**: Alpine.js (Lightweight interactive elements)
+- **Database**: PostgreSQL hosted on Supabase (No destructive migrations to respect existing structures)
+- **Payment Gateway**: Midtrans Snap API Sandbox
+- **Reporting Engine**: Barryvdh Laravel DomPDF (Dynamic PDF generation)
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+## 📂 Architecture & Core Services
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+To align with modern separation of concerns and avoid bloated controllers, business logic is isolated in modular domain service classes located in `app/Services/`:
 
+1. **`AvailabilityService`**:
+   - Manages stock counts, overlapping date ranges, and optimistic/pessimistic lock mechanisms during checkouts.
+2. **`CartService`**:
+   - Manages user's temporary rental cart in the database or session, enforcing quantity bounds.
+3. **`CheckoutService`**:
+   - Orchestrates calculations (rental fee * days, security deposits, discounts, total charges) and initiates transaction tokens.
+4. **`MidtransService`**:
+   - Handles sandbox Snap integration, generates payment tokens, and processes secure server webhook signals.
+5. **`InvoiceService`**:
+   - Generates official customer invoices in PDF format using HTML/CSS view templates compiled via DomPDF.
+6. **`OrderStatusService`**:
+   - Controls state transitions of the rental order (e.g., `Pending` ➡️ `Paid` ➡️ `Picked Up / Active` ➡️ `Returned` ➡️ `Completed` or `Late Penalty`).
+
+---
+
+## ⚡ Local Installation Guide
+
+### Prerequisites
+Make sure you have the following installed on your developer machine:
+- PHP 8.3 or higher (PHP 8.5+ recommended)
+- Composer 2.0+
+- Node.js & NPM (latest LTS)
+- PostgreSQL (if hosting database locally instead of Supabase)
+
+### Step 1: Clone the Repository
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/frahmat68-beep/Manake-V2.git
+cd "Manake V2"
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Step 2: Install Composer & NPM Dependencies
+```bash
+composer install
+npm install
+```
 
-## Contributing
+### Step 3: Set Up Environment Configuration
+Duplicate the example environment file:
+```bash
+cp .env.example .env
+```
+Open `.env` in your editor and supply your credentials:
+- **Supabase Database connection**: Fill in `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, and ensure `DB_CONNECTION=pgsql`.
+- **Midtrans Credentials**: Fill in your sandbox client/server key.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Generate a secure application key:
+```bash
+php artisan key:generate
+```
 
-## Code of Conduct
+### Step 4: Run Database Migrations
+Run standard, non-destructive migrations to initialize Breeze and baseline tables:
+```bash
+php artisan migrate
+```
+> [!WARNING]
+> DO NOT run `migrate:fresh` or `db:wipe` if connecting directly to a production database.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Step 5: Compile Assets & Start the Development Servers
+Compile Vite assets and boot up the local servers:
+```bash
+npm run build
+```
+Or start local hot-reloads:
+```bash
+npm run dev
+```
 
-## Security Vulnerabilities
+Run Laravel's built-in web server:
+```bash
+php artisan serve
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Access the application in your browser at `http://127.0.0.1:8000`.
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 🧪 Verification & Quality Control
+
+### Run Automated Tests
+```bash
+php artisan test
+```
+
+### Manual Visual Auditing
+Access `/register` and `/login` to verify the Tailwind CSS + Alpine.js powered Blade templates render properly.
