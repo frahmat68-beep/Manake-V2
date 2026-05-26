@@ -13,6 +13,10 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    const ROLE_USER = 'user';
+    const ROLE_ADMIN = 'admin';
+    const ROLE_SUPER_ADMIN = 'super_admin';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -22,7 +26,24 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
+
+    /**
+     * Check if the user is an admin or super admin.
+     */
+    public function isAdmin(): bool
+    {
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_SUPER_ADMIN]);
+    }
+
+    /**
+     * Check if the user is a super admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === self::ROLE_SUPER_ADMIN;
+    }
 
     /**
      * The attributes that should be hidden for serialization.

@@ -32,6 +32,11 @@
                         <x-nav-link :href="route('checkout.index')" :active="request()->routeIs('checkout.index')" class="text-zinc-300 hover:text-amber-500 border-transparent hover:border-amber-500">
                             Checkout
                         </x-nav-link>
+                        @if(Auth::user()->isAdmin())
+                            <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" class="text-amber-555 hover:text-amber-400 border-transparent text-amber-500 font-bold">
+                                Admin Panel
+                            </x-nav-link>
+                        @endif
                     @endauth
                 </div>
             </div>
@@ -112,6 +117,11 @@
                 <x-responsive-nav-link :href="route('checkout.index')" :active="request()->routeIs('checkout.index')" class="text-zinc-300 hover:text-amber-500">
                     Checkout
                 </x-responsive-nav-link>
+                @if(Auth::user()->isAdmin())
+                    <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" class="text-amber-500 hover:text-amber-450 font-bold">
+                        Admin Panel
+                    </x-responsive-nav-link>
+                @endif
             @endauth
         </div>
 

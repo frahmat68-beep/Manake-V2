@@ -9,6 +9,11 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\MidtransWebhookController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\EquipmentController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use Illuminate\Support\Facades\Route;
 
 // Public Landing Page (Homepage)
@@ -52,6 +57,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
     Route::get('/orders/{order}/invoice/download', [OrderController::class, 'downloadInvoice'])->name('orders.invoice.download');
     Route::post('/payments/{order}/refresh', [OrderController::class, 'refreshPayment'])->name('payments.refresh');
+});
+
+// Admin Operations Panel Route Group
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::resource('categories', CategoryController::class);
+    Route::resource('equipments', EquipmentController::class);
+    
+    // Order monitoring
+    Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.update-status');
+    Route::post('/orders/{order}/fees', [AdminOrderController::class, 'addFee'])->name('orders.fees');
+    
+    // Payments query
+    Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments.index');
 });
 
 require __DIR__.'/auth.php';

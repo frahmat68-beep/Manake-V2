@@ -21,6 +21,19 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Test User',
                 'password' => bcrypt('password'),
+                'role' => User::ROLE_USER,
+            ]
+        );
+
+        // Seed Demo Admin User
+        $adminEmail = env('ADMIN_SEED_EMAIL', 'admin@manake.test');
+        $adminPassword = env('ADMIN_SEED_PASSWORD', 'password');
+        User::updateOrCreate(
+            ['email' => $adminEmail],
+            [
+                'name' => 'Administrator Manake',
+                'password' => bcrypt($adminPassword),
+                'role' => User::ROLE_ADMIN,
             ]
         );
 
