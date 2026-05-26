@@ -46,4 +46,28 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Relationship: User has one Profile.
+     */
+    public function profile()
+    {
+        return $this->hasOne(Profile::class);
+    }
+
+    /**
+     * Relationship: User has many CartItems.
+     */
+    public function cartItems()
+    {
+        return $this->hasMany(CartItem::class);
+    }
+
+    /**
+     * Relationship: User has many Orders.
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }
