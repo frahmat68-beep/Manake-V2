@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\User;
+use Illuminate\Validation\ValidationException;
+
 /**
  * Service to orchestrate the checkout pipeline.
  * Computes prices, deposits, penalties, and saves transactions securely.
@@ -10,57 +13,43 @@ class CheckoutService
 {
     protected $availabilityService;
     protected $cartService;
-    protected $midtransService;
 
     public function __construct(
         AvailabilityService $availabilityService,
-        CartService $cartService,
-        MidtransService $midtransService
+        CartService $cartService
     ) {
         $this->availabilityService = $availabilityService;
         $this->cartService = $cartService;
-        $this->midtransService = $midtransService;
     }
 
     /**
-     * Process checkout for the user's active cart.
+     * Preview checkout details for the user's active cart.
+     * Throws validation exception if the cart is empty or if any item is no longer available.
      *
-     * @param int $userId
-     * @param array $paymentDetails
-     * @return array Order data and payment redirect token
+     * @param User $user
+     * @return array Consolidated preview metrics
+     * @throws ValidationException
      */
-    public function processCheckout(int $userId, array $paymentDetails): array
+    public function preview(User $user): array
     {
-        // 1. Get cart items.
-        // 2. Double-check real-time availability.
-        // 3. Compute final costs (Total price, security deposit).
-        // 4. Create database Order and OrderItem records.
-        // 5. Generate Midtrans Snap transaction token.
-        // 6. Clear user cart.
+        $summary = $this->cartService->getSummary($user);
 
-        return [
-            'success' => true,
-            'order_id' => 'TRX-' . time(),
-            'total_amount' => 150000,
-            'snap_token' => 'mock-snap-token-123456'
-        ];
-    }
+        if ($summary['items']->isEmpty()) {
+            throw ValidationException::withMessages([
+                'cart' => 'Keranjang belanja Anda kosong. Silakan pilih alat media terlebih dahulu.',
+            ]);
+        }
 
-    /**
-     * Compute pricing including security deposits, taxes, and potential promo codes.
-     *
-     * @param array $items
-     * @param string|null $promoCode
-     * @return array
-     */
-    public function calculateFees(array $items, ?string $promoCode = null): array
-    {
-        // TODO: Query promo rules, multiply duration * item rate, calculate required security deposit.
-        return [
-            'subtotal' => 100000,
-            'deposit' => 50000,
-            'discount' => 0,
-            'total' => 150000
-        ];
+        // Re-check real-time availability for every single item in the cart
+        foreach ($summary['items'] as $item) {
+            $this->availabilityService->assertAvailable(
+                $item->equipment,
+                $item->rental_start_date,
+                $item->rental_end_date,
+                $item->qty
+            );
+        }
+
+        return $summary;
     }
 }
