@@ -42,13 +42,21 @@ class MidtransService
 
         // Build item details
         $itemDetails = [];
+        $itemDetailsTotal = 0;
+
         foreach ($order->items as $item) {
+            $durationDays = $item->duration_days;
+            $priceCalculated = (int) ($item->price_per_day * $durationDays);
+            $qty = (int) $item->qty;
+            
             $itemDetails[] = [
                 'id' => (string) $item->equipment_id,
-                'price' => (int) $item->price_per_day,
-                'quantity' => (int) $item->qty,
-                'name' => substr($item->equipment->name . ' (' . $item->duration_days . ' hari)', 0, 50),
+                'price' => $priceCalculated,
+                'quantity' => $qty,
+                'name' => substr($item->equipment_name . ' (' . $durationDays . ' hari)', 0, 50),
             ];
+
+            $itemDetailsTotal += $priceCalculated * $qty;
         }
 
         // PPN tax as a separate item if greater than 0
@@ -57,8 +65,25 @@ class MidtransService
                 'id' => 'TAX-11',
                 'price' => (int) $order->tax_amount,
                 'quantity' => 1,
-                'name' => 'PPN (11%)',
+                'name' => 'PPN 11%',
             ];
+            $itemDetailsTotal += (int) $order->tax_amount;
+        }
+
+        // Additional fee as a separate item if greater than 0
+        if ($order->additional_fee > 0) {
+            $itemDetails[] = [
+                'id' => 'ADDITIONAL-FEE',
+                'price' => (int) $order->additional_fee,
+                'quantity' => 1,
+                'name' => 'Biaya Tambahan',
+            ];
+            $itemDetailsTotal += (int) $order->additional_fee;
+        }
+
+        // Verification check before calling Midtrans API
+        if ($itemDetailsTotal !== (int) $order->grand_total) {
+            throw new \RuntimeException("Total item Midtrans tidak sesuai dengan grand total order. Item Total: {$itemDetailsTotal}, Order Grand Total: {$order->grand_total}");
         }
 
         // Customer details
@@ -138,11 +163,11 @@ class MidtransService
             $paymentStatus = Order::PAYMENT_PAID;
         } elseif ($transactionStatus === 'pending') {
             $paymentStatus = Order::PAYMENT_PENDING;
-        } elseif (in_array($transactionStatus, ['deny', 'cancel'])) {
+        } elseif (in_array($transactionStatus, ['deny', 'cancel', 'failure'])) {
             $paymentStatus = Order::PAYMENT_FAILED;
         } elseif ($transactionStatus === 'expire') {
             $paymentStatus = Order::PAYMENT_EXPIRED;
-        } elseif ($transactionStatus === 'refund') {
+        } elseif (in_array($transactionStatus, ['refund', 'chargeback', 'partial_refund'])) {
             $paymentStatus = Order::PAYMENT_REFUNDED;
         }
 

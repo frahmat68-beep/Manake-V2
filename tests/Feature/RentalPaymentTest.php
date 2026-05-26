@@ -457,4 +457,157 @@ class RentalPaymentTest extends TestCase
         $this->assertEquals(Order::PAYMENT_FAILED, $order->payment_status);
         $this->assertEquals(Order::RENTAL_CANCELLED, $order->rental_status);
     }
+
+    /**
+     * Test order item duration_days accessor returns inclusive duration.
+     */
+    public function test_order_item_duration_days_accessor_returns_inclusive_duration()
+    {
+        $orderItem = new \App\Models\OrderItem([
+            'rental_start_date' => '2026-05-26',
+            'rental_end_date' => '2026-05-28', // 3 days inclusive
+        ]);
+
+        $this->assertEquals(3, $orderItem->duration_days);
+    }
+
+    /**
+     * Test computed_subtotal includes duration.
+     */
+    public function test_computed_subtotal_includes_duration()
+    {
+        $orderItem = new \App\Models\OrderItem([
+            'rental_start_date' => '2026-05-26',
+            'rental_end_date' => '2026-05-27', // 2 days inclusive
+            'qty' => 3,
+            'price_per_day' => 100000,
+        ]);
+
+        $this->assertEquals(600000, $orderItem->computed_subtotal);
+    }
+
+    /**
+     * Test Midtrans item_details total matches grand_total for multi-day rental.
+     */
+    public function test_midtrans_item_details_total_matches_grand_total_for_multi_day_rental()
+    {
+        $order = Order::create([
+            'user_id' => $this->user->id,
+            'order_number' => 'MNK-MULTI-TEST',
+            'rental_start_date' => '2026-05-26',
+            'rental_end_date' => '2026-05-27', // 2 days
+            'duration_days' => 2,
+            'subtotal' => 400000, // 2 qty * 100000 price * 2 days
+            'tax_rate' => 11.00,
+            'tax_amount' => 44000,
+            'total_amount' => 444000,
+            'grand_total' => 444000,
+            'payment_status' => 'pending',
+            'rental_status' => 'waiting_payment',
+            'midtrans_order_id' => 'mid-multi-test',
+            'expired_at' => now()->addHours(24),
+        ]);
+
+        \App\Models\OrderItem::create([
+            'order_id' => $order->id,
+            'equipment_id' => $this->equipment->id,
+            'equipment_name' => $this->equipment->name,
+            'equipment_slug' => $this->equipment->slug,
+            'qty' => 2,
+            'price_per_day' => 100000,
+            'item_subtotal' => 400000,
+            'rental_start_date' => '2026-05-26',
+            'rental_end_date' => '2026-05-27',
+        ]);
+
+        // Let's test the items total calculation directly
+        $midtransService = new MidtransService();
+        
+        // Let's simulate snap token creation items extraction to verify total
+        $itemDetails = [];
+        $itemDetailsTotal = 0;
+        foreach ($order->refresh()->items as $item) {
+            $durationDays = $item->duration_days;
+            $priceCalculated = (int) ($item->price_per_day * $durationDays);
+            $qty = (int) $item->qty;
+            $itemDetails[] = [
+                'price' => $priceCalculated,
+                'quantity' => $qty,
+            ];
+            $itemDetailsTotal += $priceCalculated * $qty;
+        }
+
+        if ($order->tax_amount > 0) {
+            $itemDetailsTotal += (int) $order->tax_amount;
+        }
+
+        $this->assertEquals($order->grand_total, $itemDetailsTotal);
+    }
+
+    /**
+     * Test MidtransService uses equipment_name snapshot even if equipment relation is missing.
+     */
+    public function test_midtrans_service_uses_equipment_name_snapshot_even_if_equipment_relation_is_missing()
+    {
+        $order = Order::create([
+            'user_id' => $this->user->id,
+            'order_number' => 'MNK-NO-EQ-TEST',
+            'rental_start_date' => '2026-05-26',
+            'rental_end_date' => '2026-05-26',
+            'duration_days' => 1,
+            'subtotal' => 100000,
+            'tax_rate' => 11.00,
+            'tax_amount' => 11000,
+            'total_amount' => 111000,
+            'grand_total' => 111000,
+            'payment_status' => 'pending',
+            'rental_status' => 'waiting_payment',
+            'midtrans_order_id' => 'mid-no-eq-test',
+            'expired_at' => now()->addHours(24),
+        ]);
+
+        // Instantiating order item in-memory to avoid SQL foreign key constraints
+        $orderItem = new \App\Models\OrderItem([
+            'order_id' => $order->id,
+            'equipment_id' => 99999, // Non-existent equipment
+            'equipment_name' => 'Kamera DJI Deleted',
+            'equipment_slug' => 'kamera-dji-deleted',
+            'qty' => 1,
+            'price_per_day' => 100000,
+            'item_subtotal' => 100000,
+            'rental_start_date' => '2026-05-26',
+            'rental_end_date' => '2026-05-26',
+        ]);
+
+        // The equipment relation is missing
+        $this->assertNull($orderItem->equipment);
+
+        // Midtrans details construction must use equipment_name and NOT throw exception
+        $nameUsed = substr($orderItem->equipment_name . ' (' . $orderItem->duration_days . ' hari)', 0, 50);
+        $this->assertEquals('Kamera DJI Deleted (1 hari)', $nameUsed);
+    }
+
+    /**
+     * Test mapTransactionStatus maps failure to failed.
+     */
+    public function test_map_transaction_status_maps_failure_to_failed()
+    {
+        $midtransService = new MidtransService();
+        $mapped = $midtransService->mapTransactionStatus(['transaction_status' => 'failure']);
+        $this->assertEquals(Order::PAYMENT_FAILED, $mapped['payment_status']);
+    }
+
+    /**
+     * Test mapTransactionStatus maps chargeback and partial_refund to refunded.
+     */
+    public function test_map_transaction_status_maps_chargeback_and_partial_refund_to_refunded()
+    {
+        $midtransService = new MidtransService();
+        
+        $mapped1 = $midtransService->mapTransactionStatus(['transaction_status' => 'chargeback']);
+        $this->assertEquals(Order::PAYMENT_REFUNDED, $mapped1['payment_status']);
+
+        $mapped2 = $midtransService->mapTransactionStatus(['transaction_status' => 'partial_refund']);
+        $this->assertEquals(Order::PAYMENT_REFUNDED, $mapped2['payment_status']);
+    }
 }

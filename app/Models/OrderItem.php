@@ -44,4 +44,24 @@ class OrderItem extends Model
     {
         return $this->belongsTo(Equipment::class);
     }
+
+    /**
+     * Accessor: Calculate inclusive duration days.
+     */
+    public function getDurationDaysAttribute(): int
+    {
+        if (!$this->rental_start_date || !$this->rental_end_date) {
+            return 1;
+        }
+
+        return Order::calculateDurationDays($this->rental_start_date, $this->rental_end_date);
+    }
+
+    /**
+     * Accessor: Computed subtotal.
+     */
+    public function getComputedSubtotalAttribute(): int
+    {
+        return $this->qty * $this->price_per_day * $this->duration_days;
+    }
 }
