@@ -7,6 +7,8 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductAvailabilityController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\MidtransWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // Public Landing Page (Homepage)
@@ -20,6 +22,10 @@ Route::get('/product/{equipment:slug}', [ProductController::class, 'show'])->nam
 
 // Public Equipment Availability polling
 Route::get('/product/{equipment:slug}/availability', [ProductAvailabilityController::class, 'show'])->name('product.availability');
+
+// Public Midtrans Webhook Callback URLs (CSRF excluded)
+Route::post('/midtrans/callback', [MidtransWebhookController::class, 'handle'])->name('midtrans.callback');
+Route::post('/api/midtrans/callback', [MidtransWebhookController::class, 'handle'])->name('api.midtrans.callback');
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -36,8 +42,16 @@ Route::middleware('auth')->group(function () {
     Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
 
-    // Checkout Preview Staging
+    // Checkout Preview & Submission
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+
+    // Customer Bookings Dashboard & Invoices
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
+    Route::get('/orders/{order}/invoice/download', [OrderController::class, 'downloadInvoice'])->name('orders.invoice.download');
+    Route::post('/payments/{order}/refresh', [OrderController::class, 'refreshPayment'])->name('payments.refresh');
 });
 
 require __DIR__.'/auth.php';

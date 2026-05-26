@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Order;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
@@ -11,30 +12,26 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class InvoiceService
 {
     /**
-     * Generate PDF Invoice for an order.
+     * Render the invoice as direct HTML string for browser previews.
      *
-     * @param array $orderData
-     * @return \Illuminate\Http\Response
+     * @param Order $order
+     * @return string
      */
-    public function downloadInvoicePdf(array $orderData)
+    public function renderHtml(Order $order): string
     {
-        // Render a Blade view into PDF.
-        // We will make sure the PDF has correct CSS styles.
-        $pdf = Pdf::loadView('invoices.rental_template', compact('orderData'));
-        
-        return $pdf->download('invoice-' . ($orderData['order_id'] ?? 'unknown') . '.pdf');
+        return view('invoices.rental_template', ['order' => $order])->render();
     }
 
     /**
-     * Stream PDF Invoice for inside browser viewing.
+     * Generate PDF Invoice for downloading.
      *
-     * @param array $orderData
+     * @param Order $order
      * @return \Illuminate\Http\Response
      */
-    public function streamInvoicePdf(array $orderData)
+    public function downloadPdf(Order $order)
     {
-        $pdf = Pdf::loadView('invoices.rental_template', compact('orderData'));
+        $pdf = Pdf::loadView('invoices.rental_template', ['order' => $order]);
         
-        return $pdf->stream();
+        return $pdf->download('invoice-' . $order->order_number . '.pdf');
     }
 }

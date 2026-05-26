@@ -69,16 +69,18 @@
                 </div>
 
                 <div class="pt-4 border-t border-zinc-850 space-y-3">
-                    <button 
-                        type="button" 
-                        disabled
-                        class="w-full bg-zinc-850 text-zinc-600 font-bold py-3 rounded-sm text-sm cursor-not-allowed border border-zinc-800"
-                    >
-                        Lanjut Pembayaran (Fase 5)
-                    </button>
+                    <form action="{{ route('checkout.store') }}" method="POST">
+                        @csrf
+                        <button 
+                            type="submit" 
+                            class="w-full bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold py-3 rounded-sm text-sm transition-all duration-300 shadow-md shadow-amber-500/10 active:scale-95 uppercase tracking-wider"
+                        >
+                            Buat Pesanan & Bayar
+                        </button>
+                    </form>
                     <div class="bg-zinc-950/40 p-3 rounded-sm border border-zinc-850 text-[10px] leading-relaxed text-zinc-500 font-light">
                         <strong class="text-amber-500/80 font-bold block mb-1">Catatan Integrasi:</strong>
-                        Pembayaran terintegrasi dengan Midtrans Snap sandbox serta pencatatan transaksi final di database akan diaktifkan sepenuhnya pada fase berikutnya (Phase 5).
+                        Pembayaran akan diproses secara aman menggunakan gerbang pembayaran Midtrans Snap sandbox.
                     </div>
                 </div>
             </div>

@@ -158,7 +158,7 @@ class RentalUiTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Preview Checkout');
         $response->assertSee('DJI Mavic 3');
-        $response->assertSee('Lanjut Pembayaran (Fase 5)');
+        $response->assertSee('Buat Pesanan');
     }
 
     /**
