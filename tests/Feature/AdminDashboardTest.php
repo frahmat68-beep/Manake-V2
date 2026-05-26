@@ -313,15 +313,129 @@ class AdminDashboardTest extends TestCase
         // 1. Regular user should NOT see Admin Panel link on homepage
         $response = $this->actingAs($this->user)
             ->get(route('home'));
-        
+
         $response->assertStatus(200);
         $response->assertDontSee('Admin Panel');
 
         // 2. Admin user should see Admin Panel link on homepage
         $response = $this->actingAs($this->admin)
             ->get(route('home'));
-        
+
         $response->assertStatus(200);
         $response->assertSee('Admin Panel');
+    }
+
+    /**
+     * 12. Admin can create equipment with valid JSON specifications.
+     */
+    public function test_admin_can_create_equipment_with_json_specifications()
+    {
+        $response = $this->actingAs($this->admin)
+            ->post(route('admin.equipments.store'), [
+                'category_id'  => $this->category->id,
+                'name'         => 'Sony FX6',
+                'slug'         => 'sony-fx6',
+                'stock'        => 2,
+                'price_per_day'=> 800000,
+                'status'       => 'ready',
+                'specifications'=> '{"sensor":"Full Frame","recording":"4K 120fps"}',
+            ]);
+
+        $response->assertRedirect(route('admin.equipments.index'));
+
+        $eq = Equipment::where('slug', 'sony-fx6')->firstOrFail();
+        $this->assertIsArray($eq->specifications);
+        $this->assertEquals('Full Frame', $eq->specifications['sensor']);
+        $this->assertEquals('4K 120fps', $eq->specifications['recording']);
+    }
+
+    /**
+     * 13. Admin can create equipment with plain text specifications (auto-wrapped as notes).
+     */
+    public function test_admin_can_create_equipment_with_plain_text_specifications()
+    {
+        $response = $this->actingAs($this->admin)
+            ->post(route('admin.equipments.store'), [
+                'category_id'   => $this->category->id,
+                'name'          => 'Rode NTG5',
+                'slug'          => 'rode-ntg5',
+                'stock'         => 3,
+                'price_per_day' => 250000,
+                'status'        => 'ready',
+                'specifications'=> 'Shotgun microphone, frequency 20Hz-20kHz, weight 76g',
+            ]);
+
+        $response->assertRedirect(route('admin.equipments.index'));
+
+        $eq = Equipment::where('slug', 'rode-ntg5')->firstOrFail();
+        $this->assertIsArray($eq->specifications);
+        $this->assertArrayHasKey('notes', $eq->specifications);
+        $this->assertStringContainsString('Shotgun microphone', $eq->specifications['notes']);
+    }
+
+    /**
+     * 14. Admin can update equipment specifications from JSON to plain text.
+     */
+    public function test_admin_can_update_specifications_from_json_to_plain_text()
+    {
+        // Start with JSON specs
+        $this->equipment->update([
+            'specifications' => ['sensor' => 'APS-C', 'mount' => 'E-Mount'],
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->patch(route('admin.equipments.update', $this->equipment->id), [
+                'category_id'   => $this->category->id,
+                'name'          => $this->equipment->name,
+                'slug'          => $this->equipment->slug,
+                'stock'         => $this->equipment->stock,
+                'price_per_day' => $this->equipment->price_per_day,
+                'status'        => $this->equipment->status,
+                'specifications'=> 'Kamera mirrorless Sony dengan sensor APS-C, mount E-Mount.',
+            ]);
+
+        $response->assertRedirect(route('admin.equipments.index'));
+
+        $this->equipment->refresh();
+        $this->assertIsArray($this->equipment->specifications);
+        $this->assertArrayHasKey('notes', $this->equipment->specifications);
+        $this->assertStringContainsString('APS-C', $this->equipment->specifications['notes']);
+    }
+
+    /**
+     * 15. Public product detail renders equipment with plain text (notes) specifications.
+     */
+    public function test_public_product_detail_renders_notes_specifications()
+    {
+        $this->equipment->update([
+            'specifications' => ['notes' => 'Kamera full frame 12 megapixel untuk video produksi.'],
+        ]);
+
+        $response = $this->get(route('product.show', $this->equipment->slug));
+
+        $response->assertStatus(200);
+        $response->assertSee('Spesifikasi Teknis');
+        $response->assertSee('Kamera full frame 12 megapixel untuk video produksi.');
+    }
+
+    /**
+     * 16. Public product detail renders equipment with key/value JSON specifications.
+     */
+    public function test_public_product_detail_renders_key_value_specifications()
+    {
+        $this->equipment->update([
+            'specifications' => [
+                'sensor'    => 'Full Frame BSI CMOS',
+                'recording' => '4K 120fps 10-bit',
+                'mount'     => 'Sony E-Mount',
+            ],
+        ]);
+
+        $response = $this->get(route('product.show', $this->equipment->slug));
+
+        $response->assertStatus(200);
+        $response->assertSee('Spesifikasi Teknis');
+        $response->assertSee('Full Frame BSI CMOS');
+        $response->assertSee('4K 120fps 10-bit');
     }
 }

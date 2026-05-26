@@ -34,17 +34,26 @@
             </div>
 
             <!-- Specifications -->
-            @if($equipment->specifications && count($equipment->specifications) > 0)
+            @php
+                $specs = $equipment->specifications; // already cast to array by Eloquent
+            @endphp
+            @if($specs && count($specs) > 0)
                 <div class="bg-zinc-900/40 border border-zinc-900 rounded-sm p-6">
                     <h2 class="text-lg font-bold text-zinc-100 mb-3 border-b border-zinc-850 pb-2">Spesifikasi Teknis</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        @foreach($equipment->specifications as $key => $val)
-                            <div class="flex justify-between items-center text-xs py-1 border-b border-zinc-900/40">
-                                <span class="text-zinc-500">{{ $key }}</span>
-                                <strong class="text-zinc-300 font-semibold">{{ $val }}</strong>
-                            </div>
-                        @endforeach
-                    </div>
+                    @if(count($specs) === 1 && isset($specs['notes']))
+                        {{-- Plain-text note stored as {"notes": "..."} --}}
+                        <p class="text-sm text-zinc-400 font-light leading-relaxed">{{ $specs['notes'] }}</p>
+                    @else
+                        {{-- Structured key/value JSON --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            @foreach($specs as $key => $val)
+                                <div class="flex justify-between items-center text-xs py-1 border-b border-zinc-900/40">
+                                    <span class="text-zinc-500 capitalize">{{ str_replace('_', ' ', $key) }}</span>
+                                    <strong class="text-zinc-300 font-semibold">{{ $val }}</strong>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             @endif
         </div>

@@ -144,14 +144,15 @@
 
             <!-- Specifications -->
             <div class="space-y-2">
-                <label for="specifications" class="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Spesifikasi</label>
+                <label for="specifications" class="text-xs font-bold text-zinc-400 uppercase tracking-widest block">Spesifikasi <span class="text-zinc-600 font-normal normal-case">(JSON atau teks bebas)</span></label>
                 <textarea 
                     name="specifications" 
                     id="specifications"
-                    rows="3"
-                    class="w-full bg-zinc-950 border border-zinc-850 focus:border-amber-500 rounded-lg text-sm px-4 py-3 text-zinc-100 placeholder-zinc-700 focus:ring-1 focus:ring-amber-500 transition-all outline-none"
-                    placeholder="Contoh: Resolusi sensor 4K, berat 1.2kg, ketahanan baterai 11 jam"
-                >{{ old('specifications', $equipment->specifications) }}</textarea>
+                    rows="4"
+                    class="w-full bg-zinc-950 border border-zinc-850 focus:border-amber-500 rounded-lg text-sm px-4 py-3 text-zinc-100 placeholder-zinc-700 focus:ring-1 focus:ring-amber-500 transition-all outline-none font-mono"
+                    placeholder='{&#10;  "sensor": "Full Frame",&#10;  "recording": "4K 120fps"&#10;}&#10;&#10;Atau tulis teks bebas, sistem akan menyimpannya sebagai catatan.'
+                >{{ old('specifications', $equipment->specifications ? json_encode($equipment->specifications, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : '') }}</textarea>
+                <p class="text-[11px] text-zinc-600 font-light">Masukkan JSON <code class="text-amber-600">{"key": "value"}</code> untuk spesifikasi terstruktur, atau teks biasa untuk catatan ringkas.</p>
                 @error('specifications')
                     <p class="text-xs text-red-500 font-light mt-1">{{ $message }}</p>
                 @enderror

@@ -56,7 +56,7 @@ class EquipmentController extends Controller
             'name' => $request->name,
             'slug' => $slug,
             'description' => $request->description,
-            'specifications' => $request->specifications,
+            'specifications' => $this->normalizeSpecifications($request->input('specifications')),
             'stock' => $request->stock,
             'price_per_day' => $request->price_per_day,
             'status' => $request->status,
@@ -103,7 +103,7 @@ class EquipmentController extends Controller
             'name' => $request->name,
             'slug' => $slug,
             'description' => $request->description,
-            'specifications' => $request->specifications,
+            'specifications' => $this->normalizeSpecifications($request->input('specifications')),
             'stock' => $request->stock,
             'price_per_day' => $request->price_per_day,
             'status' => $request->status,
@@ -120,5 +120,28 @@ class EquipmentController extends Controller
     {
         $equipment->delete();
         return redirect()->route('admin.equipments.index')->with('success', 'Peralatan berhasil dihapus!');
+    }
+
+    /**
+     * Normalize specifications input for safe PostgreSQL JSON storage.
+     *
+     * Accepts either:
+     * - Valid JSON string  → decoded and stored as array/object
+     * - Plain text string  → stored as {"notes": "plain text"}
+     * - Null/blank         → stored as NULL
+     */
+    private function normalizeSpecifications(?string $value): ?array
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        $decoded = json_decode(trim($value), true);
+
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return $decoded;
+        }
+
+        return ['notes' => trim($value)];
     }
 }
