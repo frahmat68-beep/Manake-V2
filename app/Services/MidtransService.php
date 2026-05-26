@@ -18,15 +18,16 @@ class MidtransService
     }
 
     /**
-     * Configure Midtrans Snap/CoreApi using env/config values.
+     * Configure Midtrans Snap/CoreApi using config/services.php values.
+     * Uses config() instead of env() so config:cache works on Vercel.
      */
     public function configure(): void
     {
-        Config::$serverKey = env('MIDTRANS_SERVER_KEY', 'SB-Mid-server-placeholder');
-        Config::$clientKey = env('MIDTRANS_CLIENT_KEY', 'SB-Mid-client-placeholder');
-        Config::$isProduction = filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN);
-        Config::$isSanitized = filter_var(env('MIDTRANS_IS_SANITIZED', true), FILTER_VALIDATE_BOOLEAN);
-        Config::$is3ds = filter_var(env('MIDTRANS_IS_3DS', true), FILTER_VALIDATE_BOOLEAN);
+        Config::$serverKey    = config('services.midtrans.server_key', '');
+        Config::$clientKey    = config('services.midtrans.client_key', '');
+        Config::$isProduction = (bool) config('services.midtrans.is_production', false);
+        Config::$isSanitized  = (bool) config('services.midtrans.is_sanitized', true);
+        Config::$is3ds        = (bool) config('services.midtrans.is_3ds', true);
     }
 
     /**
@@ -128,7 +129,7 @@ class MidtransService
         $orderId = $payload['order_id'] ?? '';
         $statusCode = $payload['status_code'] ?? '';
         $grossAmount = $payload['gross_amount'] ?? '';
-        $serverKey = env('MIDTRANS_SERVER_KEY', 'SB-Mid-server-placeholder');
+        $serverKey = config('services.midtrans.server_key', '');
 
         $input = $orderId . $statusCode . $grossAmount . $serverKey;
         $signature = hash('sha512', $input);
