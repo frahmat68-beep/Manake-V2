@@ -137,6 +137,33 @@ class ManakeHealthCheck extends Command
             warn: true,
         );
 
+        // 12. DB_SCHEMA is set (schema isolation check)
+        $configuredSchema = config('database.connections.pgsql.search_path', 'public');
+        $allPassed = $this->check(
+            'DB_SCHEMA is set (not using default)',
+            fn () => env('DB_SCHEMA') !== null && env('DB_SCHEMA') !== '',
+            warn: true,
+        ) && $allPassed;
+
+        // 13. Warn if DB_SCHEMA=public in production (collision risk with old Manake data)
+        if ($isProduction && $configuredSchema === 'public') {
+            $this->line('  <fg=yellow>  ⚠ WARN</>  DB_SCHEMA=public in production — risk of collision with old Manake tables.');
+            $this->line('         <fg=yellow>Recommendation: Set DB_SCHEMA=manake_v2 and run CREATE SCHEMA IF NOT EXISTS manake_v2;</>');
+        } else {
+            $schemaLabel = $configuredSchema;
+            $this->line("  <fg=green>  ✓ PASS</>  Active PostgreSQL search_path: [{$schemaLabel}]");
+        }
+
+        // 14. Verify current PostgreSQL search_path is active on live connection
+        $this->check(
+            'PostgreSQL search_path is readable from connection',
+            function () use ($configuredSchema) {
+                $result = DB::selectOne('SHOW search_path');
+                return $result !== null;
+            },
+            warn: true, // non-fatal — only works when DB is connected
+        );
+
         // Summary
         $this->newLine();
         if ($allPassed) {

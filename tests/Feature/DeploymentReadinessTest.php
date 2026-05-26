@@ -37,6 +37,7 @@ class DeploymentReadinessTest extends TestCase
             'DB_USERNAME',
             'DB_PASSWORD',
             'DB_SSLMODE',
+            'DB_SCHEMA',
             'SESSION_DRIVER',
             'CACHE_STORE',
             'QUEUE_CONNECTION',
@@ -135,6 +136,12 @@ class DeploymentReadinessTest extends TestCase
             $content,
             'DEPLOYMENT.md must mention the Midtrans callback URL'
         );
+
+        $this->assertStringContainsString(
+            'CREATE SCHEMA IF NOT EXISTS manake_v2',
+            $content,
+            'DEPLOYMENT.md must include the schema creation SQL'
+        );
     }
 
     /**
@@ -175,5 +182,64 @@ class DeploymentReadinessTest extends TestCase
     {
         $sslmode = config('database.connections.pgsql.sslmode');
         $this->assertNotNull($sslmode, 'pgsql connection must have sslmode configured');
+    }
+
+    /**
+     * 8. .env.example contains DB_SCHEMA key.
+     */
+    public function test_env_example_contains_db_schema(): void
+    {
+        $content = file_get_contents(base_path('.env.example'));
+        $this->assertStringContainsString(
+            'DB_SCHEMA',
+            $content,
+            '.env.example must contain DB_SCHEMA for schema isolation'
+        );
+        $this->assertStringContainsString(
+            'manake_v2',
+            $content,
+            '.env.example DB_SCHEMA must reference manake_v2 schema'
+        );
+    }
+
+    /**
+     * 9. config/database.php uses DB_SCHEMA for PostgreSQL search_path.
+     */
+    public function test_database_config_search_path_is_configurable(): void
+    {
+        // search_path must come from env() — not hardcoded to 'public'
+        $dbConfigContent = file_get_contents(config_path('database.php'));
+
+        $this->assertStringContainsString(
+            'DB_SCHEMA',
+            $dbConfigContent,
+            'config/database.php must use DB_SCHEMA env variable for search_path'
+        );
+
+        $this->assertStringContainsString(
+            'search_path',
+            $dbConfigContent,
+            'config/database.php pgsql connection must have search_path key'
+        );
+    }
+
+    /**
+     * 10. DEPLOYMENT.md includes schema isolation SQL.
+     */
+    public function test_deployment_docs_include_schema_isolation_sql(): void
+    {
+        $content = file_get_contents(base_path('DEPLOYMENT.md'));
+
+        $this->assertStringContainsString(
+            'CREATE SCHEMA IF NOT EXISTS manake_v2',
+            $content,
+            'DEPLOYMENT.md must include the manake_v2 schema creation SQL'
+        );
+
+        $this->assertStringContainsString(
+            'DB_SCHEMA',
+            $content,
+            'DEPLOYMENT.md must reference the DB_SCHEMA env variable'
+        );
     }
 }

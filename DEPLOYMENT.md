@@ -79,6 +79,7 @@ DB_DATABASE=postgres
 DB_USERNAME=postgres
 DB_PASSWORD=your_supabase_password
 DB_SSLMODE=require
+DB_SCHEMA=manake_v2
 
 SESSION_DRIVER=database
 CACHE_STORE=database
@@ -125,13 +126,51 @@ Or connect your GitHub repo to Vercel for automatic deploys on push.
 
 ---
 
-## 4. Running Migrations Safely on Supabase
+## 4. Schema Isolation — Create `manake_v2` Schema
+
+> [!IMPORTANT]
+> The existing Supabase project already has old Manake tables in the `public` schema  
+> (`users`, `categories`, `equipments`, `orders`, etc.).  
+> Manake V2 MUST use a **separate schema** to avoid collision.
+
+### 4.1 Create the isolated schema in Supabase
+
+Go to: **Supabase Dashboard → SQL Editor** and run:
+
+```sql
+-- Create the dedicated schema for Manake V2
+CREATE SCHEMA IF NOT EXISTS manake_v2;
+
+-- Grant usage to your postgres user
+GRANT USAGE ON SCHEMA manake_v2 TO postgres;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA manake_v2 TO postgres;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA manake_v2 TO postgres;
+ALTER DEFAULT PRIVILEGES IN SCHEMA manake_v2 GRANT ALL ON TABLES TO postgres;
+ALTER DEFAULT PRIVILEGES IN SCHEMA manake_v2 GRANT ALL ON SEQUENCES TO postgres;
+```
+
+This SQL is **safe** — it does NOT touch or drop any existing `public` schema tables.
+
+### 4.2 What this achieves
+
+| Schema | Contents | Status |
+|--------|----------|--------|
+| `public` | Old Manake V1 tables | ✅ Preserved — not touched |
+| `manake_v2` | All Manake V2 tables | ✅ Clean — safe to migrate |
+
+> [!CAUTION]
+> **NEVER import old data by running migrations into `public`.**  
+> If you want to migrate old records to V2, do it with explicit `INSERT INTO manake_v2.table SELECT ... FROM public.table` — never via destructive migration commands.
+
+---
+
+## 5. Running Migrations Safely on Supabase
 
 > [!IMPORTANT]
 > Always run migrations from your **local machine** against the Supabase database URL.  
 > Never run `migrate:fresh` or `migrate:reset` on a database with real data.
 
-### 4.1 Setup local `.env` to point to Supabase
+### 5.1 Setup local `.env` to point to Supabase
 
 Temporarily update your local `.env`:
 ```env
@@ -141,9 +180,14 @@ DB_DATABASE=postgres
 DB_USERNAME=postgres
 DB_PASSWORD=your_supabase_password
 DB_SSLMODE=require
+DB_SCHEMA=manake_v2
 ```
 
-### 4.2 Run migrations safely
+> [!IMPORTANT]
+> `DB_SCHEMA=manake_v2` tells Laravel to run all queries and migrations inside the `manake_v2` schema.  
+> The old `public` schema data is completely untouched.
+
+### 5.2 Run migrations safely
 
 ```bash
 # Check which migrations have not been run yet
@@ -163,7 +207,7 @@ php artisan migrate:rollback
 
 ---
 
-## 5. Seeding Demo Data Safely
+## 6. Seeding Demo Data Safely
 
 Seeders are idempotent — they use `firstOrCreate` to avoid duplicates.
 
@@ -178,7 +222,7 @@ php artisan db:seed
 
 ---
 
-## 6. Creating Admin User Safely
+## 7. Creating Admin User Safely
 
 ### Option A — Via Seeder (recommended)
 Set `ADMIN_SEED_EMAIL` and `ADMIN_SEED_PASSWORD` in `.env`, then:
@@ -209,7 +253,7 @@ php artisan tinker
 
 ---
 
-## 7. Midtrans Callback URL Configuration
+## 8. Midtrans Callback URL Configuration
 
 Register these URLs in **Midtrans Dashboard → Settings → Configuration**:
 
@@ -224,7 +268,7 @@ Register these URLs in **Midtrans Dashboard → Settings → Configuration**:
 
 ---
 
-## 8. Health Check
+## 9. Health Check
 
 Before going live, run:
 
@@ -252,7 +296,7 @@ Expected output (all PASS):
 
 ---
 
-## 9. Manual Smoke Test Checklist
+## 10. Manual Smoke Test Checklist
 
 After deploying, verify these manually:
 
@@ -274,12 +318,14 @@ After deploying, verify these manually:
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
 | `500 Server Error` after deploy | Check `APP_KEY` is set in Vercel env vars |
 | Database connection failed | Verify `DB_SSLMODE=require` and Supabase credentials |
+| Tables not found after migration | Verify `DB_SCHEMA=manake_v2` is set AND schema was created with SQL above |
+| Migrations ran into wrong schema | Check `DB_SCHEMA` env var — must be `manake_v2` not `public` |
 | Midtrans webhook not received | Verify callback URL registered in Midtrans dashboard |
 | CSS/JS not loading | Run `npm run build` and ensure `public/build/` is committed |
 | Sessions not persisting | Ensure `SESSION_DRIVER=database` and `sessions` table exists |
